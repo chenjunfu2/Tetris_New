@@ -106,9 +106,9 @@ public:
 		return u8curRotation;
 	}
 
-	void RotateBlock(uint8_t u8Rotation)
+	void RotateBlock(int8_t i8Rotation)
 	{
-		u8curRotation += u8Rotation;
+		u8curRotation += (uint8_t)i8Rotation;
 		u8curRotation %= 4;
 	}
 
@@ -202,6 +202,13 @@ public:
 			//因为每一行仅由bit位组成，可以一次性使用位与处理而不用for
 			//对于游戏板内每一行，根据i64BlockX取出4bit，然后和方块进行位与
 
+			//首先判断这一行是否有方块（数量为0）
+			//如果没有直接跳过
+			if ((uint8_t)(arrBorad[szBoardYBeg + i] >> szBoradWide) == 0)
+			{
+				continue;
+			}
+
 			//方块所在区域的位
 			size_t szAreaWide = szBlockHighX - szBlockLowX;
 			uint8_t u8BlockArea = ((arrBorad[szBoardYBeg + i] >> (szBoradWide - szAreaWide)) << (csBlock.szBlockSide - szAreaWide)) & csBlock.u8BlockBitMask;
@@ -214,20 +221,15 @@ public:
 		return true;
 	}
 
+	//如果成功返回true，并设置方块旋转后（可能被挤压或移动）的新坐标，否则返回false
+	bool CanRotate(const TetrisBlock &csBlock, int64_t &i64BlockX, int64_t &i64BlockY, int8_t i8NewRotation)
+	{
 
+	}
 
+	//在地图中固化方块并消除满行，返回false代表固化失败（游戏结束）
+	bool SolidifyAndClear(const TetrisBlock &csBlock, int64_t i64BlockX, int64_t i64BlockY)
+	{
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+	}
 };
