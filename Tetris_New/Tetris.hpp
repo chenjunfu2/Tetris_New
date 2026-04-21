@@ -9,9 +9,8 @@ class TetrisBlock
 public:
 	static constexpr size_t szBlockSide = 4;
 	static constexpr size_t szRotationCount = 4;
-
-private:
 	static constexpr uint8_t u8BlockBitMask = 0b0000'1111;//低4bit掩模版
+private:
 	std::array<uint8_t, 4> arrBlock[szRotationCount] = { 0 };//4*4大小，4种旋转形式
 	uint8_t u8curRotation = 0;
 
@@ -145,9 +144,8 @@ class TetrisBorad
 public:
 	static constexpr size_t szBoradWide = 10;
 	static constexpr size_t szBoradHigh = 20;
-
-private:
 	static constexpr uint16_t u16BoradBitMask = 0b0000'0011'1111'1111;//低10bit掩模版
+private:
 	std::array<uint16_t, 20> arrBorad = { 0 };//每个16bit中的10bit作为一行（宽10），一共20个元素（高20）
 
 public:
@@ -173,6 +171,8 @@ public:
 			return false;
 		}
 
+		const auto &curRotateBlock = csBlock.GetCurRotateBlock();
+
 		//方块越界游戏区域在碰撞判断的同时处理
 		size_t szBoardYBeg = i64BlockY < 0 ? 0 : i64BlockY;
 		size_t szBlockYBeg = szBlockLowY;
@@ -181,11 +181,14 @@ public:
 			//因为每一行仅由bit位组成，可以一次性使用位与处理而不用for
 			//对于游戏板内每一行，根据i64BlockX取出4bit，然后和方块进行位与
 
-
-
-
+			//方块所在区域的位
+			size_t szAreaWide = szBlockHighX - szBlockLowX;
+			uint8_t u8BlockArea = ((arrBorad[szBoardYBeg + i] >> (szBoradWide - szAreaWide)) << (csBlock.szBlockSide - szAreaWide)) & csBlock.u8BlockBitMask;
+			if (u8BlockArea & curRotateBlock[szBlockYBeg + i])//如果与不为0则碰撞
+			{
+				return false;
+			}
 		}
-
 
 		return true;
 	}
