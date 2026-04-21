@@ -105,9 +105,9 @@ private:
 	
 
 public:
-	bool CanFall()
+	bool CanMove(const TetrisBlock &csBlock, size_t x, size_t y)
 	{
-
+		//处理越界，使用位与判断是否有重叠部分
 	}
 
 
