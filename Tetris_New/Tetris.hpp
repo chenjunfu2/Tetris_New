@@ -9,8 +9,7 @@ class TetrisBlock
 public:
 	static constexpr size_t szBlockSide = 4;
 	static constexpr size_t szRotationCount = 4;
-	static constexpr uint8_t u8LowBlockBitMask = 0b0000'1111;//低4bit掩模版
-	static constexpr uint8_t u8HighBlockBitMask = 0b1111'0000;//高4bit掩模版
+	static constexpr uint8_t u8BlockBitMask = 0b0000'1111;//低4bit掩模版
 private:
 	std::array<uint8_t, 2> arrBlock[szRotationCount] = { 0 };//4*4大小，4种旋转形式
 	uint8_t u8curRotation = 0;
@@ -33,6 +32,12 @@ protected:
 
 		arrBase[y] &= ~((uint8_t)0b0000'0001 << x);//先清除位
 		arrBase[y] |= (u8Bit & (uint8_t)0b0000'0001) << x;//再设置位
+	}
+
+	constexpr static uint8_t GetArrLine(const std::array<uint8_t, 2> &arrBase, size_t y)
+	{
+		size_t szMove = y % 2 == 0 ? 0 : 4;
+		return (arrBase[y] >> szMove) & u8BlockBitMask;
 	}
 
 	constexpr static std::array<uint8_t, 2> RotateArr(const std::array<uint8_t, 2> &arrBase, uint8_t u8Rotation)
@@ -68,24 +73,25 @@ protected:
 		return arrRotate;
 	}
 
-	static uint8_t HighNBits(uint8_t n)
+	constexpr static uint8_t HighNBits(uint8_t n)
 	{
 		return ((((uint8_t)0b0000'0001 << n) - 1) << (szBlockSide - n)) & 0b0000'1111;
 	}
 
-	static uint8_t LowNBits(uint8_t n)
+	constexpr static uint8_t LowNBits(uint8_t n)
 	{
 		return ((uint8_t)0b0000'0001 << n) - 1;
 	}
 
 public:
 	constexpr TetrisBlock(const std::array<uint8_t, 2> &arrBlockBase) :
-		arrBlock({
-		RotateArr(arrBlockBase, 0),
-		RotateArr(arrBlockBase, 1),
-		RotateArr(arrBlockBase, 2),
-		RotateArr(arrBlockBase, 3),
-		}),
+		arrBlock
+		{
+			RotateArr(arrBlockBase, 0),
+			RotateArr(arrBlockBase, 1),
+			RotateArr(arrBlockBase, 2),
+			RotateArr(arrBlockBase, 3),
+		},
 		u8curRotation(0)
 	{}
 
@@ -104,6 +110,16 @@ public:
 	{
 		u8curRotation += u8Rotation;
 		u8curRotation %= 4;
+	}
+
+	uint8_t GetCurRotateBlockBit(size_t x, size_t y) const
+	{
+		return GetArrBit(GetCurRotateBlock(), x, y);
+	}
+
+	uint8_t GetCurRotateBlockLine(size_t y) const
+	{
+		return GetArrLine(GetCurRotateBlock(), y);
 	}
 
 	bool BoundaryTest(size_t szLowX, size_t szLowY, size_t szHighX, size_t szHighY) const
@@ -178,8 +194,6 @@ public:
 			return false;
 		}
 
-		const auto &curRotateBlock = csBlock.GetCurRotateBlock();
-
 		//方块越界游戏区域在碰撞判断的同时处理
 		size_t szBoardYBeg = i64BlockY < 0 ? 0 : i64BlockY;
 		size_t szBlockYBeg = szBlockLowY;
@@ -191,7 +205,7 @@ public:
 			//方块所在区域的位
 			size_t szAreaWide = szBlockHighX - szBlockLowX;
 			uint8_t u8BlockArea = ((arrBorad[szBoardYBeg + i] >> (szBoradWide - szAreaWide)) << (csBlock.szBlockSide - szAreaWide)) & csBlock.u8BlockBitMask;
-			if (u8BlockArea & curRotateBlock[szBlockYBeg + i])//如果与不为0则碰撞
+			if (u8BlockArea & csBlock.GetCurRotateBlockLine(szBlockYBeg + i))//如果与不为0则碰撞
 			{
 				return false;
 			}
