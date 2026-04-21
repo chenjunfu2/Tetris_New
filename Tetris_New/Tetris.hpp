@@ -7,9 +7,8 @@
 class TetrisBlock
 {
 private:
+	static constexpr uint8_t u8BlockBitMask = 0b0000'1111;//低4bit掩模版
 	std::array<uint8_t, 4> arrBlock[4] = { 0 };//4*4大小，4种旋转形式
-	static constexpr uint8_t u16BitMask = 0b0000'1111;//低4bit掩模版
-
 	uint8_t u8curRotation = 0;
 
 protected:
@@ -61,27 +60,42 @@ protected:
 public:
 	constexpr TetrisBlock(const std::array<uint8_t, 4> &arrBlockBase)
 	{
+		for (size_t i = 0; i < arrBlockBase.size(); ++i)
+		{
+			arrBlock[0][i] = arrBlockBase[i] & u8BlockBitMask;//预处理输入并拷贝
+		}
 
-
-
-
-
+		//生成旋转
+		arrBlock[1] = RotateArr(arrBlock[0], 1);
+		arrBlock[2] = RotateArr(arrBlock[0], 2);
+		arrBlock[3] = RotateArr(arrBlock[0], 3);
 	}
 
 
+	const std::array<uint8_t, 4> &GetCurRotateBlock(void) const
+	{
+		return arrBlock[u8curRotation];
+	}
 
+	uint8_t GetCurRotation(void) const
+	{
+		return u8curRotation;
+	}
 
-
-
-
+	void RotateBlock(uint8_t u8Rotation)
+	{
+		u8curRotation += u8Rotation;
+		u8curRotation %= 4;
+	}
 };
 
 
 class TetrisBorad
 {
 private:
+	static constexpr uint16_t u16BoradBitMask = 0b0000'0011'1111'1111;//低10bit掩模版
 	std::array<uint16_t, 20> arrBorad = { 0 };//每个16bit中的10bit作为一行（宽10），一共20个元素（高20）
-	static constexpr uint16_t u16BitMask = 0b0000'0011'1111'1111;//低10bit掩模版
+	
 
 public:
 	bool CanFall()
