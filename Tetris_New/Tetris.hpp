@@ -9,26 +9,35 @@ class TetrisBlock
 public:
 	static constexpr size_t szBlockSide = 4;
 	static constexpr size_t szRotationCount = 4;
-	static constexpr uint8_t u8BlockBitMask = 0b0000'1111;//低4bit掩模版
+	static constexpr uint8_t u8LowBlockBitMask = 0b0000'1111;//低4bit掩模版
+	static constexpr uint8_t u8HighBlockBitMask = 0b1111'0000;//高4bit掩模版
 private:
-	std::array<uint8_t, 4> arrBlock[szRotationCount] = { 0 };//4*4大小，4种旋转形式
+	std::array<uint8_t, 2> arrBlock[szRotationCount] = { 0 };//4*4大小，4种旋转形式
 	uint8_t u8curRotation = 0;
 
 protected:
-	constexpr static uint8_t GetArrBit(const std::array<uint8_t, 4> &arrBase, size_t x, size_t y)
+	constexpr static uint8_t GetArrBit(const std::array<uint8_t, 2> &arrBase, size_t x, size_t y)
 	{
+		//计算x和y的实际值
+		x = y % 2 == 0 ? x : x + 4;
+		y /= 2;
+
 		return (arrBase[y] >> x) & (uint8_t)0b0000'0001;
 	}
 
-	constexpr static void SetArrBit(std::array<uint8_t, 4> &arrBase, size_t x, size_t y, uint8_t u8Bit)
+	constexpr static void SetArrBit(std::array<uint8_t, 2> &arrBase, size_t x, size_t y, uint8_t u8Bit)
 	{
+		//计算x和y的实际值
+		x = y % 2 == 0 ? x : x + 4;
+		y /= 2;
+
 		arrBase[y] &= ~((uint8_t)0b0000'0001 << x);//先清除位
 		arrBase[y] |= (u8Bit & (uint8_t)0b0000'0001) << x;//再设置位
 	}
 
-	constexpr static std::array<uint8_t, 4> RotateArr(const std::array<uint8_t, 4> &arrBase, uint8_t u8Rotation)
+	constexpr static std::array<uint8_t, 2> RotateArr(const std::array<uint8_t, 2> &arrBase, uint8_t u8Rotation)
 	{
-		std::array<uint8_t, 4> arrRotate = { 0 };
+		std::array<uint8_t, 2> arrRotate = { 0 };
 
 		u8Rotation %= szRotationCount;//szRotationCount->4个旋转方向，每个旋转是90度
 		for (size_t y = 0; y < szBlockSide; ++y)
@@ -70,21 +79,18 @@ protected:
 	}
 
 public:
-	constexpr TetrisBlock(const std::array<uint8_t, 4> &arrBlockBase)
-	{
-		for (size_t i = 0; i < szBlockSide; ++i)
-		{
-			arrBlock[0][i] = arrBlockBase[i] & u8BlockBitMask;//预处理输入并拷贝
-		}
-
-		//生成旋转
-		arrBlock[1] = RotateArr(arrBlock[0], 1);
-		arrBlock[2] = RotateArr(arrBlock[0], 2);
-		arrBlock[3] = RotateArr(arrBlock[0], 3);
-	}
+	constexpr TetrisBlock(const std::array<uint8_t, 2> &arrBlockBase) :
+		arrBlock({
+		RotateArr(arrBlockBase, 0),
+		RotateArr(arrBlockBase, 1),
+		RotateArr(arrBlockBase, 2),
+		RotateArr(arrBlockBase, 3),
+		}),
+		u8curRotation(0)
+	{}
 
 
-	const std::array<uint8_t, 4> &GetCurRotateBlock(void) const
+	const std::array<uint8_t, 2> &GetCurRotateBlock(void) const
 	{
 		return arrBlock[u8curRotation];
 	}
@@ -147,6 +153,7 @@ public:
 	static constexpr uint16_t u16BoradBitMask = 0b0000'0011'1111'1111;//低10bit掩模版
 private:
 	std::array<uint16_t, 20> arrBorad = { 0 };//每个16bit中的10bit作为一行（宽10），一共20个元素（高20）
+	//高6bit存储这一行有几个方块，用于快速消除判断
 
 public:
 	bool CanMove(const TetrisBlock &csBlock, int64_t i64BlockX, int64_t i64BlockY)
