@@ -6,9 +6,13 @@
 
 class TetrisBlock
 {
+public:
+	static constexpr size_t szBlockSide = 4;
+	static constexpr size_t szRotationCount = 4;
+
 private:
 	static constexpr uint8_t u8BlockBitMask = 0b0000'1111;//低4bit掩模版
-	std::array<uint8_t, 4> arrBlock[4] = { 0 };//4*4大小，4种旋转形式
+	std::array<uint8_t, 4> arrBlock[szRotationCount] = { 0 };//4*4大小，4种旋转形式
 	uint8_t u8curRotation = 0;
 
 protected:
@@ -26,12 +30,11 @@ protected:
 	constexpr static std::array<uint8_t, 4> RotateArr(const std::array<uint8_t, 4> &arrBase, uint8_t u8Rotation)
 	{
 		std::array<uint8_t, 4> arrRotate = { 0 };
-		size_t szArrSize = arrBase.size();
 
-		u8Rotation %= 4;//4->4个旋转方向，每个旋转是90度
-		for (size_t y = 0; y < szArrSize; ++y)
+		u8Rotation %= szRotationCount;//szRotationCount->4个旋转方向，每个旋转是90度
+		for (size_t y = 0; y < szBlockSide; ++y)
 		{
-			for (size_t x = 0; x < szArrSize; ++x)
+			for (size_t x = 0; x < szBlockSide; ++x)
 			{
 				switch (u8Rotation)
 				{
@@ -39,13 +42,13 @@ protected:
 					SetArrBit(arrRotate, x, y, GetArrBit(arrBase, x, y));
 					break;
 				case 1://右转90
-					SetArrBit(arrRotate, x, y, GetArrBit(arrBase, szArrSize - 1 - x, y));
+					SetArrBit(arrRotate, x, y, GetArrBit(arrBase, szBlockSide - 1 - x, y));
 					break;
 				case 2://翻转180
-					SetArrBit(arrRotate, x, y, GetArrBit(arrBase, szArrSize - 1 - x, szArrSize - 1 - y));
+					SetArrBit(arrRotate, x, y, GetArrBit(arrBase, szBlockSide - 1 - x, szBlockSide - 1 - y));
 					break;
 				case 3://左转90
-					SetArrBit(arrRotate, x, y, GetArrBit(arrBase, x, szArrSize - 1 - y));
+					SetArrBit(arrRotate, x, y, GetArrBit(arrBase, x, szBlockSide - 1 - y));
 					break;
 				default:
 					return { 0 };//意外结果
@@ -57,11 +60,20 @@ protected:
 		return arrRotate;
 	}
 
+	static uint8_t HighNBits(uint8_t n)
+	{
+		return ((((uint8_t)0b0000'0001 << n) - 1) << (szBlockSide - n)) & 0b0000'1111;
+	}
+
+	static uint8_t LowNBits(uint8_t n)
+	{
+		return ((uint8_t)0b0000'0001 << n) - 1;
+	}
 
 public:
 	constexpr TetrisBlock(const std::array<uint8_t, 4> &arrBlockBase)
 	{
-		for (size_t i = 0; i < arrBlockBase.size(); ++i)
+		for (size_t i = 0; i < szBlockSide; ++i)
 		{
 			arrBlock[0][i] = arrBlockBase[i] & u8BlockBitMask;//预处理输入并拷贝
 		}
@@ -88,20 +100,94 @@ public:
 		u8curRotation += u8Rotation;
 		u8curRotation %= 4;
 	}
+
+	bool BoundaryTest(size_t szLowX, size_t szLowY, size_t szHighX, size_t szHighY) const
+	{
+		if (szLowX > szHighX ||
+			szLowY > szHighY ||
+			szHighX > szBlockSide ||
+			szHighY > szBlockSide)
+		{
+			return false;//越界与上下边界要求检测
+		}
+		
+		const auto &curBlock = GetCurRotateBlock();
+
+
+		auto TraverseTestBlock =
+		[&curBlock](size_t szYBeg, size_t szYEnd, uint8_t u8BoundaryMask) -> bool
+		{
+			for (size_t y = szYBeg; y < szYEnd; ++y)
+			{
+				if (curBlock[y] & u8BoundaryMask)//与边界mask与运算后不为0，那么说明原始内容存在边界相交
+				{
+					return false;
+				}
+			}
+
+			return true;
+		};
+
+		return
+		//遍历低y之前的部分，要求必须全为0
+		TraverseTestBlock(0, szLowY, (uint8_t)0b0000'1111) && 
+		//遍历中间覆盖部分，判断左右边界
+		TraverseTestBlock(szLowY, szHighY, HighNBits(szBlockSide - szHighX) | LowNBits(szLowX)) &&
+		//遍历高y之后的部分，要求必须全为0
+		TraverseTestBlock(szHighY, szBlockSide, (uint8_t)0b0000'1111);
+	}
+
 };
 
 
 class TetrisBorad
 {
+public:
+	static constexpr size_t szBoradWide = 10;
+	static constexpr size_t szBoradHigh = 20;
+
 private:
 	static constexpr uint16_t u16BoradBitMask = 0b0000'0011'1111'1111;//低10bit掩模版
 	std::array<uint16_t, 20> arrBorad = { 0 };//每个16bit中的10bit作为一行（宽10），一共20个元素（高20）
-	
 
 public:
-	bool CanMove(const TetrisBlock &csBlock, size_t x, size_t y)
+	bool CanMove(const TetrisBlock &csBlock, int64_t i64BlockX, int64_t i64BlockY)
 	{
 		//处理越界，使用位与判断是否有重叠部分
+		if (i64BlockX >= szBoradWide ||
+			i64BlockY >= szBoradHigh ||//正向超出边界大小
+			i64BlockX <= -(int64_t)csBlock.szBlockSide ||
+			i64BlockY <= -(int64_t)csBlock.szBlockSide)//负向超出一个方块大小
+		{
+			return false;
+		}
+
+		//先进行方块越界判断处理
+		size_t szBlockLowX = i64BlockX >= 0 ? 0 : -i64BlockX;//如果没有负向溢出，那么从0判断，否则从溢出长度判断
+		size_t szBlockLowY = i64BlockY >= 0 ? 0 : -i64BlockY;
+		size_t szBlockHighX = i64BlockX + csBlock.szBlockSide <= (int64_t)szBoradWide ? csBlock.szBlockSide : (int64_t)szBoradWide - i64BlockX;//如果没有正向溢出，那么从结束边界判断，否则从还未溢出的长度判断
+		size_t szBlockHighY = i64BlockY + csBlock.szBlockSide <= (int64_t)szBoradHigh ? csBlock.szBlockSide : (int64_t)szBoradHigh - i64BlockY;
+
+		if (!csBlock.BoundaryTest(szBlockLowX, szBlockLowY, szBlockHighX, szBlockHighY))
+		{
+			return false;
+		}
+
+		//方块越界游戏区域在碰撞判断的同时处理
+		size_t szBoardYBeg = i64BlockY < 0 ? 0 : i64BlockY;
+		size_t szBlockYBeg = szBlockLowY;
+		for (size_t i = 0; i < szBlockHighY - szBlockLowY; ++i)//裁切到边界内
+		{
+			//因为每一行仅由bit位组成，可以一次性使用位与处理而不用for
+			//对于游戏板内每一行，根据i64BlockX取出4bit，然后和方块进行位与
+
+
+
+
+		}
+
+
+		return true;
 	}
 
 
