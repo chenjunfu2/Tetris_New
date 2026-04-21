@@ -19,14 +19,8 @@ protected:
 
 	constexpr static void SetArrBit(std::array<uint8_t, 4> &arrBase, size_t x, size_t y, uint8_t u8Bit)
 	{
-		if (u8Bit & (uint8_t)0b0000'0001)
-		{
-			arrBase[y] |= (uint8_t)0b0000'0001 << x;
-		}
-		else
-		{
-			arrBase[y] &= ~((uint8_t)0b0000'0001 << x);
-		}
+		arrBase[y] &= ~((uint8_t)0b0000'0001 << x);//先清除位
+		arrBase[y] |= (u8Bit & (uint8_t)0b0000'0001) << x;//再设置位
 	}
 
 	constexpr static std::array<uint8_t, 4> RotateArr(const std::array<uint8_t, 4> &arrBase, uint8_t u8Rotation)
