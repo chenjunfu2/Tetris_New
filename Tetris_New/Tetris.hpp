@@ -185,7 +185,7 @@ public:
 
 		//先进行方块越界判断处理
 		size_t szBlockLowX = i64BlockX >= 0 ? 0 : -i64BlockX;//如果没有负向溢出，那么从0判断，否则从溢出长度判断
-		size_t szBlockLowY = i64BlockY >= 0 ? 0 : -i64BlockY;
+		size_t szBlockLowY = i64BlockY >= -(int64_t)csBlock.szBlockSide ? 0 : -i64BlockY - (int64_t)csBlock.szBlockSide;//如果方块没有超出上面1个方块大小的距离（下落保留区域），那么使用0判断，否则裁剪方块起始边界长度为溢出保留区域的长度
 		size_t szBlockHighX = i64BlockX + csBlock.szBlockSide <= (int64_t)szBoradWide ? csBlock.szBlockSide : (int64_t)szBoradWide - i64BlockX;//如果没有正向溢出，那么从结束边界判断，否则从还未溢出的长度判断
 		size_t szBlockHighY = i64BlockY + csBlock.szBlockSide <= (int64_t)szBoradHigh ? csBlock.szBlockSide : (int64_t)szBoradHigh - i64BlockY;
 
@@ -195,7 +195,7 @@ public:
 		}
 
 		//方块越界游戏区域在碰撞判断的同时处理
-		size_t szBoardYBeg = i64BlockY < 0 ? 0 : i64BlockY;
+		size_t szBoardYBeg = i64BlockY < 0 ? 0 : i64BlockY;//直接从边界内开始判断，溢出部分必然不可能与合法方块碰撞
 		size_t szBlockYBeg = szBlockLowY;
 		for (size_t i = 0; i < szBlockHighY - szBlockLowY; ++i)//裁切到边界内
 		{
